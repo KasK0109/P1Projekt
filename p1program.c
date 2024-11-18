@@ -3,7 +3,8 @@
 #include <dirent.h>
 #include <string.h>
 
-typedef struct {
+typedef struct
+{
     int number;
     char filename[256];
 } FileIndex;
@@ -11,7 +12,8 @@ typedef struct {
 int getFileData(char *fileName);
 int getDirectoryData(FileIndex *files);
 
-int main(void) {
+int main(void)
+{
 
     FileIndex files[1024];
 
@@ -21,14 +23,16 @@ int main(void) {
     {
         printf("Number: %d - Filename: %s\n", files[i].number, files[i].filename);
     }
-    
+
     int userInput = 0;
     printf("Type the number of the file you want to see: \n");
-    scanf(" %d", &userInput);
+    scanf("%d", &userInput);
 
+    // get data of file that the user wrote out, if it exists
     for (int i = 0; i < numberOfFiles; i++)
     {
-        if(userInput == files[i].number) {
+        if (userInput == files[i].number)
+        {
             getFileData(files[i].filename);
             printf("Filename 1: %s", files[i].filename);
         }
@@ -37,31 +41,41 @@ int main(void) {
     return 0;
 }
 
-int getFileData(char *fileName) {
-    
+/// @brief Print all the data in a file within the `./data/` directory.
+/// @param fileName
+/// @return a status code?
+int getFileData(char *fileName)
+{
+
     FILE *fptr;
     char fileToOpen[256];
 
-    strcpy(fileToOpen, "./data/");
-    strcat(fileToOpen, fileName);
-    fptr = fopen(fileToOpen, "r");
+    strcpy(fileToOpen, "./data/"); // `./data/`
+    strcat(fileToOpen, fileName);  // `./data/<fileName>`
 
-    if(fptr == NULL) {
+    fptr = fopen(fileToOpen, "r");
+    if (fptr == NULL) // happens if file does not exist
+    {
         printf("Error opening file");
     }
 
     char line[1024];
 
-    while(fgets(line, sizeof(line), fptr)) {
+    while (fgets(line, sizeof(line), fptr))
+    {
         printf("%s", line);
     }
-    
+
     fclose(fptr);
 
     return 0;
 }
 
-int getDirectoryData(FileIndex *files) {
+/// @brief Fetch directory data, relative to running directory.
+/// @param files
+/// @return The number of files
+int getDirectoryData(FileIndex *files)
+{
 
     DIR *directory;
     struct dirent *entry;
@@ -69,22 +83,26 @@ int getDirectoryData(FileIndex *files) {
 
     directory = opendir("./data");
 
-    if(directory == NULL) {
+    if (directory == NULL)
+    {
         printf("Error opening folder");
         return 1;
     }
 
-    while ((entry = readdir(directory)) != NULL) {
+    while ((entry = readdir(directory)) != NULL)
+    {
         // Check if entry is a regular file and ends with ".csv"
-        if (entry->d_type == DT_REG) {
+        if (entry->d_type == DT_REG)
+        {
             // Find the length of the filename
             int len = strlen(entry->d_name);
 
             // Check if the file has a ".csv" extension
-            if (len > 4 && strcmp(entry->d_name + len - 4, ".csv") == 0) {
+            if (len > 4 && strcmp(entry->d_name + len - 4, ".csv") == 0)
+            {
                 files[fileNumber].number = fileNumber + 1;
 
-                // Corrected strncpy: 
+                // Corrected strncpy:
                 strncpy(files[fileNumber].filename, entry->d_name, sizeof(files[fileNumber].filename) - 1);
                 files[fileNumber].filename[sizeof(files[fileNumber].filename) - 1] = '\0';
 
@@ -94,8 +112,8 @@ int getDirectoryData(FileIndex *files) {
         }
     }
 
-
-    if(closedir(directory) == -1) {
+    if (closedir(directory) == -1)
+    {
         printf("Error closing directory.\n");
         return 1;
     }
