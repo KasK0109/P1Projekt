@@ -9,12 +9,11 @@ typedef struct
     char filename[256];
 } FileIndex;
 
-int getFileData(char *fileName);
+void printFileData(char *fileName);
 int getDirectoryData(FileIndex *files);
 
 int main(void)
 {
-
     FileIndex files[1024];
 
     int numberOfFiles = getDirectoryData(files);
@@ -33,7 +32,7 @@ int main(void)
     {
         if (userInput == files[i].number)
         {
-            getFileData(files[i].filename);
+            printFileData(files[i].filename);
             printf("Filename 1: %s", files[i].filename);
         }
     }
@@ -44,16 +43,14 @@ int main(void)
 /// @brief Print all the data in a file within the `./data/` directory.
 /// @param fileName
 /// @return a status code?
-int getFileData(char *fileName)
+void printFileData(char *fileName)
 {
-
-    FILE *fptr;
     char fileToOpen[256];
 
     strcpy(fileToOpen, "./data/"); // `./data/`
     strcat(fileToOpen, fileName);  // `./data/<fileName>`
 
-    fptr = fopen(fileToOpen, "r");
+    FILE *fptr = fopen(fileToOpen, "r");
     if (fptr == NULL) // happens if file does not exist
     {
         printf("Error opening file");
@@ -68,15 +65,14 @@ int getFileData(char *fileName)
 
     fclose(fptr);
 
-    return 0;
+    return;
 }
 
-/// @brief Fetch directory data, relative to running directory.
+/// @brief Fetch directory data, relative to running directory. Also prints information as it goes.
 /// @param files
 /// @return The number of files
 int getDirectoryData(FileIndex *files)
 {
-
     DIR *directory;
     struct dirent *entry;
     int fileNumber = 0;
