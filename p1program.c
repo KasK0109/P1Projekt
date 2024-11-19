@@ -3,19 +3,19 @@
 #include <dirent.h>
 #include <string.h>
 
-typedef struct {
+typedef struct {                                        // Struct der indeholder en fil og dens index nummer
     int number;
     char filename[256];
 } FileIndex;
 
-int getFileData(char *fileName);
+int getFileData(char *fileName);            
 int getDirectoryData(FileIndex *files);
 
 int main(void) {
 
-    FileIndex files[1024];
+    FileIndex files[1024];                              // Et array af structs med filnavn og nummer
 
-    int numberOfFiles = getDirectoryData(files);
+    int numberOfFiles = getDirectoryData(files);        // Antallet af filer i en mappe
 
     for (int i = 0; i < numberOfFiles; i++)
     {
@@ -54,7 +54,7 @@ int getFileData(char *fileName) {
 
     while(fgets(line, sizeof(line), fptr)) {
         printf("%s", line);
-    }
+        }
     
     fclose(fptr);
 
