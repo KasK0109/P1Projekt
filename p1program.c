@@ -4,18 +4,24 @@
 #include <string.h>
 
 typedef struct {                                        // Struct der indeholder en fil og dens index nummer
-typedef struct
-{
     int number;
     char filename[256];
 } FileIndex;
 
-void printFileData(char *fileName);
+typedef struct {
+    double GRID;
+    double SUSTAIN;
+    double USAGE;
+} PowerStruct;
+
+int printFileData(char *fileName, PowerStruct powerStructs[]);
 int getDirectoryData(FileIndex *files);
+void printStruct(PowerStruct power);
 
 int main(void)
 {
     FileIndex files[1024];
+    PowerStruct powerStructs[2048];
 
     int numberOfFiles = getDirectoryData(files);        // Antallet af filer i en mappe
 
@@ -29,14 +35,20 @@ int main(void)
     scanf("%d", &userInput);
 
     // get data of file that the user wrote out, if it exists
+    int powerLength = 0;
     for (int i = 0; i < numberOfFiles; i++)
     {
         if (userInput == files[i].number)
         {
-            printFileData(files[i].filename);
-            printf("Filename 1: %s", files[i].filename);
+            powerLength = printFileData(files[i].filename, powerStructs);
         }
     }
+    
+    for (int i = 0; i < powerLength; i++)
+    {
+        printStruct(powerStructs[i]);
+    }
+    
 
     return 0;
 }
@@ -44,7 +56,7 @@ int main(void)
 /// @brief Print all the data in a file within the `./data/` directory.
 /// @param fileName
 /// @return a status code?
-void printFileData(char *fileName)
+int printFileData(char *fileName, PowerStruct powerStructs[])
 {
     char fileToOpen[256];
 
@@ -54,19 +66,26 @@ void printFileData(char *fileName)
     FILE *fptr = fopen(fileToOpen, "r");
     if (fptr == NULL) // happens if file does not exist
     {
-        printf("Error opening file");
+        exit(EXIT_FAILURE);
     }
 
     char line[1024];
+    int index = 0;
 
     while (fgets(line, sizeof(line), fptr))
     {
-        printf("%s", line);
+        PowerStruct powerStruct;
+        int result = fscanf(fptr, " %lf %lf %lf", &powerStruct.GRID, &powerStruct.SUSTAIN, &powerStruct.USAGE);
+        if(result != 3) {
+            break;
+        } 
+        powerStructs[index] = powerStruct;
+        index++;
     }
 
     fclose(fptr);
 
-    return;
+    return index;
 }
 
 /// @brief Fetch directory data, relative to running directory. Also prints information as it goes.
@@ -116,4 +135,19 @@ int getDirectoryData(FileIndex *files)
     }
 
     return fileNumber;
+}
+
+void printStruct(PowerStruct power) {
+    // Get the values
+    double grid = power.GRID;
+    double sustain = power.SUSTAIN;
+    double usage = power.USAGE;
+
+    if(grid <= 1.0) {
+        printf("\n GRID: OUTAGE");
+    } else {
+        printf("\n GRID: %6.2lf", grid);
+    }
+    printf("| SUSTAINABLE: %6.2lf", sustain);
+    printf("| USAGE: %6.2lf", usage);    
 }
