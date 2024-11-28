@@ -21,9 +21,10 @@ int getDirectoryData(FileIndex *files);
 void printStruct(PowerStruct power[], int powerArrayLength);
 double calcArrayAverage(double array[], int length);
 void printDir(FileIndex files[], int fileArrayLength);
-int getFileLength(FileIndex files[], int fileArrayLength, int input, PowerStruct powerStructs[]);
-void runStandardProgram(FileIndex files[], PowerStruct powerStructs[]);
-void editData(FileIndex files[], PowerStruct powerStructs[]);
+char *getFileName(FileIndex files[], int fileArrayLength, int input);
+int getFile(char *fileName, PowerStruct powerStructs[]);
+int runStandardProgram(FileIndex files[], PowerStruct powerStructs[]);
+int editData(FileIndex files[], PowerStruct powerStructs[]);
 
 int main(int argc, char *argv[])
 {
@@ -49,17 +50,12 @@ int main(int argc, char *argv[])
     switch (UserMenuInput)
     {
     case 1:
-        runStandardProgram(files, powerStructs);
-        break;
+        return runStandardProgram(files, powerStructs);
     case 2:
-        editData(files, powerStructs);
-        break;
-
+        return editData(files, powerStructs);
     default:
-        break;
+        return -1;
     }
-
-    return 0;
 }
 
 /// @brief Print all the data in a file within the `./data/` directory.
@@ -81,16 +77,21 @@ int getLinesFromFile(char *fileName, PowerStruct powerStructs[])
     char line[1024];
     int index = 0;
 
+    // note: sscanf scans the line starting from the first line.
+    // if any line is empty, it stops collecting data,
+    // which means that the first line in the data file should not be empty
     while (fgets(line, sizeof(line), fptr))
     {
-        PowerStruct powerStruct;
-        int result = fscanf(fptr, " %lf %lf %lf", &powerStruct.GRID, &powerStruct.SUSTAIN, &powerStruct.USAGE);
+        PowerStruct nextDataPoint;
+        int result = sscanf(line, " %lf %lf %lf", &nextDataPoint.GRID, &nextDataPoint.SUSTAIN, &nextDataPoint.USAGE);
         if (result != 3)
         {
-            break;
+            // data point was empty (imagine an empty line at the start of the file)
+            // if we did not do this, powerStructs would have a value of `0.0 0.0 0.0` at this index.
+            continue;
         }
 
-        powerStructs[index] = powerStruct;
+        powerStructs[index] = nextDataPoint;
         index++;
     }
 
@@ -211,7 +212,6 @@ void printStruct(PowerStruct power[], int powerArrayLength)
 
 double calcArrayAverage(double array[], int length)
 {
-
     double sum = 0;
     double average = 0;
 
@@ -231,21 +231,34 @@ void printDir(FileIndex files[], int fileArrayLength)
     }
 }
 
-int getFileLength(FileIndex files[], int fileArrayLength, int input, PowerStruct powerStructs[])
+/// @brief Choose a file from a user input
+/// @param files
+/// @param fileArrayLength
+/// @param input
+/// @return The name of the file from its number
+char *getFileName(FileIndex files[], int fileArrayLength, int userInput)
 {
-
     for (int i = 0; i < fileArrayLength; i++)
     {
-        if (input == files[i].number)
+        if (userInput == files[i].number)
         {
-            return getLinesFromFile(files[i].filename, powerStructs);
+            return files[i].filename;
         }
     }
+    return NULL;
 }
 
-void runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
+/// @brief Writes an array of PowerStructs into memory from a file name.
+/// @param fileName
+/// @param powerStructs
+/// @return Success code for writing to memory
+int getFile(char *filename, PowerStruct powerStructs[])
 {
+    return getLinesFromFile(filename, powerStructs);
+}
 
+int runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
+{
     int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
     printDir(files, numberOfFiles);              // Print filnavne og numre
 
@@ -254,18 +267,76 @@ void runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
     scanf("%d", &userInput);
 
     // get data of file that the user wrote out, if it exists
-    int powerLength = getFileLength(files, numberOfFiles, userInput, powerStructs);
+    // this writes to powerStructs in the process
+    char *fileName = getFileName(files, numberOfFiles, userInput);
+    int powerLength = getFile(fileName, powerStructs);
+    if (powerLength == -1)
+    {
+        printf("No such file was indexed.");
+        return -1;
+    }
 
     printStruct(powerStructs, powerLength);
     printf("\n");
+    return 0;
 }
 
-void editData(FileIndex files[], PowerStruct powerStructs[])
+/// @brief Prompts user to create a new file or edit (append) and existing file.
+/// @param files
+/// @param powerStructs
+/// @returns result code
+int editData(FileIndex files[], PowerStruct powerStructs[])
 {
+    // ask user to write single data point
+    printf("Write a single data point, specified as 3 decimal numbers separated by space, e.g. `2.0 3.1 151`\n> ");
+    PowerStruct newDataPoint;
+    scanf("%lf %lf %lf", &newDataPoint.GRID, &newDataPoint.SUSTAIN, &newDataPoint.USAGE);
+    printf("received %lf, %lf, %lf\n\n", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+
+    printf("Existing files:\n");
     int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
     printDir(files, numberOfFiles);              // Print filnavne og numre
 
-    int userInput = 0;
-    printf("Type the number of the file you want to see: \n");
-    scanf("%d", &userInput);
+    // ask user where to put data point (new file or existing)
+    printf("Do you want to create new file (`N`), or append (`A`) an existing file?\n> ");
+    char answer;
+    scanf(" %c", &answer); // note the empty space, without it the buffer is not flushed for some reason
+
+    switch (answer)
+    {
+    case 'A':
+    case 'a':
+    {
+        char path[1024];
+        strcpy(path, "./data/");
+
+        int userInput = 0;
+        printf("Type the number of the file you want to see: \n");
+        scanf("%d", &userInput);
+
+        char *filename = getFileName(files, numberOfFiles, userInput);
+        FILE *fptr = fopen(strcat(path, filename), "a");
+        fprint(fptr, "%6.2lf %6.2lf %6.2lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+        fclose(fptr);
+    }
+    break;
+    case 'N':
+    case 'n':
+    {
+        char path[1024];
+        strcpy(path, "./data/");
+        char fileName[1024];
+        printf("What do you want the file to be called?\n> ");
+        scanf(" %s", &fileName);
+
+        FILE *fptr = fopen(strcat(path, fileName), "w");
+        fprintf(fptr, "%6.2lf %6.2lf %6.2lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+        fclose(fptr);
+    }
+    break;
+    default:
+        printf("Unknown answer");
+        return -1;
+    }
+    return 0;
 }
