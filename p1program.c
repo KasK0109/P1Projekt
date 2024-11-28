@@ -3,12 +3,14 @@
 #include <dirent.h>
 #include <string.h>
 
-typedef struct {                                        // Struct der indeholder en fil og dens index nummer
+typedef struct
+{ // Struct der indeholder en fil og dens index nummer
     int number;
     char filename[256];
 } FileIndex;
 
-typedef struct {
+typedef struct
+{
     double GRID;
     double SUSTAIN;
     double USAGE;
@@ -20,32 +22,42 @@ void printStruct(PowerStruct power[], int powerArrayLength);
 double calcArrayAverage(double array[], int length);
 void printDir(FileIndex files[], int fileArrayLength);
 int getFileLength(FileIndex files[], int fileArrayLength, int input, PowerStruct powerStructs[]);
-void runStandartProgram(FileIndex files[],PowerStruct powerStructs[]);
+void runStandardProgram(FileIndex files[], PowerStruct powerStructs[]);
+void editData(FileIndex files[], PowerStruct powerStructs[]);
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    int UserMenuInput;
+    // test
+    if (argv[1] != NULL)
+    {
+        int number = atoi(argv[1]);
+        printf("User input received: %d\n", number);
+        UserMenuInput = number;
+    }
+    else
+    {
+        printf("Hello welcome to program menu please select:\n");
+        printf("1 - view csv data files\n");
+        printf("2 - edit data\n");
+        scanf(" %d", &UserMenuInput);
+    }
+
     FileIndex files[1024];
     PowerStruct powerStructs[2048];
-    int UserMenuInput;
-
-    printf("Hello welcome to program menu please select:\n");
-    printf("1 - view csv data files\n");
-    printf("2 - edit data\n");
-    scanf(" %d", &UserMenuInput);
 
     switch (UserMenuInput)
     {
     case 1:
-        runStandartProgram(files,powerStructs);
+        runStandardProgram(files, powerStructs);
         break;
     case 2:
-        eidtData(files,powerStructs);
+        editData(files, powerStructs);
         break;
-    
+
     default:
         break;
     }
-
 
     return 0;
 }
@@ -61,19 +73,22 @@ int getLinesFromFile(char *fileName, PowerStruct powerStructs[])
     strcat(fileToOpen, fileName);  // `./data/<fileName>`
 
     FILE *fptr = fopen(fileToOpen, "r");
-    if (fptr == NULL) { // happens if file does not exist
+    if (fptr == NULL)
+    { // happens if file does not exist
         exit(EXIT_FAILURE);
     }
 
     char line[1024];
     int index = 0;
 
-    while (fgets(line, sizeof(line), fptr)) {
+    while (fgets(line, sizeof(line), fptr))
+    {
         PowerStruct powerStruct;
         int result = fscanf(fptr, " %lf %lf %lf", &powerStruct.GRID, &powerStruct.SUSTAIN, &powerStruct.USAGE);
-        if(result != 3) {
+        if (result != 3)
+        {
             break;
-        } 
+        }
 
         powerStructs[index] = powerStruct;
         index++;
@@ -104,12 +119,14 @@ int getDirectoryData(FileIndex *files)
     while ((entry = readdir(directory)) != NULL)
     {
         // Check if entry is a regular file and ends with ".csv"
-        if (entry->d_type == DT_REG) {
+        if (entry->d_type == DT_REG)
+        {
             // Find the length of the filename
             int len = strlen(entry->d_name);
 
             // Check if the file has a ".csv" extension
-            if (len > 4 && strcmp(entry->d_name + len - 4, ".csv") == 0) {
+            if (len > 4 && strcmp(entry->d_name + len - 4, ".csv") == 0)
+            {
                 files[fileNumber].number = fileNumber + 1;
 
                 // Corrected strncpy:
@@ -130,7 +147,8 @@ int getDirectoryData(FileIndex *files)
     return fileNumber;
 }
 
-void printStruct(PowerStruct power[], int powerArrayLength) {
+void printStruct(PowerStruct power[], int powerArrayLength)
+{
     // Get the values
 
     double grid;
@@ -145,7 +163,8 @@ void printStruct(PowerStruct power[], int powerArrayLength) {
     printf("|                      DATA                     |\n");
     printf("-------------------------------------------------\n");
 
-    for (int i = 0; i < powerArrayLength; i++) {
+    for (int i = 0; i < powerArrayLength; i++)
+    {
         grid = power[i].GRID;
         sustain = power[i].SUSTAIN;
         usage = power[i].USAGE;
@@ -154,15 +173,18 @@ void printStruct(PowerStruct power[], int powerArrayLength) {
         sustainArray[i] = sustain;
         usageArray[i] = usage;
 
-        if (grid <= 1.0) {
+        if (grid <= 1.0)
+        {
             printf("\n\033[31m GRID: OUTAGE\033[0m"); // Rød tekst
-        } else {
+        }
+        else
+        {
             printf("\n\033[32m GRID: %6.2lf\033[0m", grid); // Grøn tekst
         }
 
         printf("| \033[34mSUSTAINABLE: %6.2lf\033[0m", sustain); // Blå tekst
-        printf("| \033[36mUSAGE: %6.2lf\033[0m", usage); // Cyan tekst
-    }   
+        printf("| \033[36mUSAGE: %6.2lf\033[0m", usage);         // Cyan tekst
+    }
 
     printf("\n");
     double gridAverage = calcArrayAverage(gridArray, powerArrayLength);
@@ -173,18 +195,22 @@ void printStruct(PowerStruct power[], int powerArrayLength) {
     printf("|                    AVERAGES                   |\n");
     printf("-------------------------------------------------\n");
 
-    if (gridAverage <= 1.0) {
+    if (gridAverage <= 1.0)
+    {
         printf("\033[31m GRID: OUTAGE\033[0m"); // Rød tekst
-    } else {
+    }
+    else
+    {
         printf("\033[32m GRID: %6.2lf\033[0m", gridAverage); // Grøn tekst
     }
 
     printf("| \033[34mSUSTAINABLE: %6.2lf\033[0m", sustainAverage); // Blå tekst
-    printf("| \033[36mUSAGE: %6.2lf\033[0m", usageAverage); // Cyan tekst
+    printf("| \033[36mUSAGE: %6.2lf\033[0m", usageAverage);         // Cyan tekst
     printf("\n");
 }
 
-double calcArrayAverage(double array[], int length) {
+double calcArrayAverage(double array[], int length)
+{
 
     double sum = 0;
     double average = 0;
@@ -194,49 +220,52 @@ double calcArrayAverage(double array[], int length) {
         sum += array[i];
     }
 
-    return average = sum / length;    
+    return average = sum / length;
 }
 
-void printDir(FileIndex files[], int fileArrayLength) {
-    for (int i = 0; i < fileArrayLength; i++){
+void printDir(FileIndex files[], int fileArrayLength)
+{
+    for (int i = 0; i < fileArrayLength; i++)
+    {
         printf("Number: %d - Filename: %s\n", files[i].number, files[i].filename);
     }
 }
 
-int getFileLength(FileIndex files[], int fileArrayLength, int input, PowerStruct powerStructs[]) {
+int getFileLength(FileIndex files[], int fileArrayLength, int input, PowerStruct powerStructs[])
+{
 
-    for (int i = 0; i < fileArrayLength; i++){
-        if (input == files[i].number){
-                return getLinesFromFile(files[i].filename, powerStructs);
+    for (int i = 0; i < fileArrayLength; i++)
+    {
+        if (input == files[i].number)
+        {
+            return getLinesFromFile(files[i].filename, powerStructs);
         }
     }
 }
 
-void runStandartProgram(FileIndex files[],PowerStruct powerStructs[]){
-    
-            int numberOfFiles = getDirectoryData(files);        // Antallet af filer i en mappe
-            printDir(files, numberOfFiles);                     // Print filnavne og numre
+void runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
+{
 
-            int userInput = 0;
-            printf("Type the number of the file you want to see: \n");
-            scanf("%d", &userInput);
-
-            // get data of file that the user wrote out, if it exists
-            int powerLength = getFileLength(files, numberOfFiles, userInput, powerStructs);
-
-            printStruct(powerStructs, powerLength);
-            printf("\n");
-}
-
-
-void eidtData(FileIndex files[],PowerStruct powerStructs[]){
-    int numberOfFiles = getDirectoryData(files);        // Antallet af filer i en mappe
-    printDir(files, numberOfFiles);                     // Print filnavne og numre
+    int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
+    printDir(files, numberOfFiles);              // Print filnavne og numre
 
     int userInput = 0;
     printf("Type the number of the file you want to see: \n");
     scanf("%d", &userInput);
 
+    // get data of file that the user wrote out, if it exists
+    int powerLength = getFileLength(files, numberOfFiles, userInput, powerStructs);
 
+    printStruct(powerStructs, powerLength);
+    printf("\n");
+}
 
+void editData(FileIndex files[], PowerStruct powerStructs[])
+{
+    int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
+    printDir(files, numberOfFiles);              // Print filnavne og numre
+
+    int userInput = 0;
+    printf("Type the number of the file you want to see: \n");
+    scanf("%d", &userInput);
 }
