@@ -316,7 +316,7 @@ int editData(FileIndex files[], PowerStruct powerStructs[])
 
         char *filename = getFileName(files, numberOfFiles, userInput);
         FILE *fptr = fopen(strcat(path, filename), "a");
-        fprint(fptr, "%6.2lf %6.2lf %6.2lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+        fprintf(fptr, "%6.2lf %6.2lf %6.2lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
         fclose(fptr);
     }
     break;
