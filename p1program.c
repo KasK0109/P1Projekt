@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
         printf("Hello welcome to program menu please select:\n");
         printf("1 - view csv data files\n");
         printf("2 - edit data\n");
+        printf("> ");
         scanf(" %d", &UserMenuInput);
     }
 
@@ -263,12 +264,17 @@ int runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
     printDir(files, numberOfFiles);              // Print filnavne og numre
 
     int userInput = 0;
-    printf("Type the number of the file you want to see: \n");
-    scanf("%d", &userInput);
+    printf("Type the number of the file you want to see:\n> ");
+    scanf(" %d", &userInput);
 
     // get data of file that the user wrote out, if it exists
     // this writes to powerStructs in the process
     char *fileName = getFileName(files, numberOfFiles, userInput);
+    if (fileName == NULL)
+    {
+        printf("No such file was indexed.");
+        return -1;
+    }
     int powerLength = getFile(fileName, powerStructs);
     if (powerLength == -1)
     {
@@ -293,10 +299,6 @@ int editData(FileIndex files[], PowerStruct powerStructs[])
     scanf("%lf %lf %lf", &newDataPoint.GRID, &newDataPoint.SUSTAIN, &newDataPoint.USAGE);
     printf("received %lf, %lf, %lf\n\n", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
 
-    printf("Existing files:\n");
-    int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
-    printDir(files, numberOfFiles);              // Print filnavne og numre
-
     // ask user where to put data point (new file or existing)
     printf("Do you want to create new file (`N`), or append (`A`) an existing file?\n> ");
     char answer;
@@ -307,16 +309,20 @@ int editData(FileIndex files[], PowerStruct powerStructs[])
     case 'A':
     case 'a':
     {
+        printf("Existing files:\n");
+        int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
+        printDir(files, numberOfFiles);              // Print filnavne og numre
+
         char path[1024];
         strcpy(path, "./data/");
 
         int userInput = 0;
-        printf("Type the number of the file you want to see: \n");
-        scanf("%d", &userInput);
+        printf("What is the number of the file you want to append to?\n> ");
+        scanf(" %d", &userInput);
 
         char *filename = getFileName(files, numberOfFiles, userInput);
         FILE *fptr = fopen(strcat(path, filename), "a");
-        fprintf(fptr, "%6.2lf %6.2lf %6.2lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+        fprintf(fptr, "%lf %lf %lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
         fclose(fptr);
     }
     break;
@@ -330,7 +336,7 @@ int editData(FileIndex files[], PowerStruct powerStructs[])
         scanf(" %s", &fileName);
 
         FILE *fptr = fopen(strcat(path, fileName), "w");
-        fprintf(fptr, "%6.2lf %6.2lf %6.2lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+        fprintf(fptr, "%lf %lf %lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
         fclose(fptr);
     }
     break;
