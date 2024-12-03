@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/P1Projekt.iml" filepath="$PROJECT_DIR$/.idea/P1Projekt.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/power_viewer.iml" filepath="$PROJECT_DIR$/.idea/power_viewer.iml" />
     </modules>
   </component>
 </project>
