@@ -3,12 +3,15 @@
 #include <dirent.h>
 #include <string.h>
 
+/// @brief En fil og dens index nummer
 typedef struct
-{ // Struct der indeholder en fil og dens index nummer
+{
     int number;
     char filename[256];
 } FileIndex;
 
+/// @brief
+/// A struct containing information about the power supplied by the grid, the power generated from sustainable energy and the usage.
 typedef struct
 {
     double GRID;
@@ -19,15 +22,16 @@ typedef struct
 int getLinesFromFile(char *fileName, PowerStruct powerStructs[]);
 int getDirectoryData(FileIndex *files);
 void printStruct(PowerStruct power[], int powerArrayLength);
+void print_point(double grid, double sustain, double usage);
 double calcArrayAverage(double array[], int length);
 void printDir(FileIndex files[], int fileArrayLength);
 char *getFileName(FileIndex files[], int fileArrayLength, int input);
 int getFile(char *fileName, PowerStruct powerStructs[]);
-int runStandardProgram(FileIndex files[], PowerStruct powerStructs[]);
-int editData(FileIndex files[], PowerStruct powerStructs[]);
+int userReadFiles(FileIndex files[], PowerStruct powerStructs[]);
+int userEditData(FileIndex files[], PowerStruct powerStructs[]);
 
 int main(int argc, char *argv[])
-{
+{ // Input from the user determeining what the program should do
     int UserMenuInput;
     // test
     if (argv[1] != NULL)
@@ -39,44 +43,47 @@ int main(int argc, char *argv[])
     else
     {
         printf("Hello welcome to program menu please select:\n");
-        printf("1 - view csv data files\n");
-        printf("2 - edit data\n");
+        printf("1 - view csv files\n");
+        printf("2 - edit csv files\n");
         printf("> ");
         scanf(" %d", &UserMenuInput);
     }
+    // Array of files in a Dirdirectory
+    FileIndex files[1024]; // Array of structs fstructs based on a line in a file
 
-    FileIndex files[1024];
-    PowerStruct powerStructs[2048];
+    // Switch statement based on the user input     PowerStruct powerStructs[2048];
 
     switch (UserMenuInput)
     {
     case 1:
-        return runStandardProgram(files, powerStructs);
+        return userReadFiles(files, powerStructs);
     case 2:
-        return editData(files, powerStructs);
+        return userEditData(files, powerStructs);
     default:
         return -1;
     }
 }
 
 /// @brief Print all the data in a file within the `./data/` directory.
-/// @param fileName
+/// @param fhow many spaces are filled in the powerstruct array
 /// @return a status code?
 int getLinesFromFile(char *fileName, PowerStruct powerStructs[])
 {
-    char fileToOpen[256];
-
-    strcpy(fileToOpen, "./data/"); // `./data/`
-    strcat(fileToOpen, fileName);  // `./data/<fileName>`
-
+    UU // Full name of hethe              path and filename
+        char fileToOpen[256];
+    copies into the fileTopOpen varia ble
+        strcpy(fileToOpen, "./data/"); // concats the filename into the fileToOpen variable `./data/`
+    strcat(fileToOpen, fileName);      // `./data/<fileName>`
+                                       // File pointerr tto that opoints to  theFile pointer that points to an open file in read mode
     FILE *fptr = fopen(fileToOpen, "r");
     if (fptr == NULL)
+        printf(File doesnot eist : % c, fileToOpen);
     { // happens if file does not exist
         exit(EXIT_FAILURE);
     }
-
-    char line[1024];
-    int index = 0;
+    // / Char array
+    //  Character array that represents a line in the file   char line[1024];
+    int index = 0; // Index that keeps track of which position in the powerstruct array the program is at
 
     // note: sscanf scans the line starting from the first line.
     // if any line is empty, it stops collecting data,
@@ -149,6 +156,9 @@ int getDirectoryData(FileIndex *files)
     return fileNumber;
 }
 
+/// @brief Given some power data, pretty print it
+/// @param power the data
+/// @param powerArrayLength the length of the data
 void printStruct(PowerStruct power[], int powerArrayLength)
 {
     // Get the values
@@ -175,17 +185,7 @@ void printStruct(PowerStruct power[], int powerArrayLength)
         sustainArray[i] = sustain;
         usageArray[i] = usage;
 
-        if (grid <= 1.0)
-        {
-            printf("\n\033[31m GRID: OUTAGE\033[0m"); // Rød tekst
-        }
-        else
-        {
-            printf("\n\033[32m GRID: %6.2lf\033[0m", grid); // Grøn tekst
-        }
-
-        printf("| \033[34mSUSTAINABLE: %6.2lf\033[0m", sustain); // Blå tekst
-        printf("| \033[36mUSAGE: %6.2lf\033[0m", usage);         // Cyan tekst
+        print_point(grid, sustain, usage);
     }
 
     printf("\n");
@@ -197,17 +197,29 @@ void printStruct(PowerStruct power[], int powerArrayLength)
     printf("|                    AVERAGES                   |\n");
     printf("-------------------------------------------------\n");
 
-    if (gridAverage <= 1.0)
+    print_point(gridAverage, sustainAverage, usageAverage);
+    printf("\n"); // extra space
+}
+
+/// @brief Pretty prints a data point.
+/// @param grid The grid value
+/// @param sustain The sustain value
+/// @param usage The usage value
+void print_point(double grid, double sustain, double usage)
+{
+    // line begin
+    if (grid <= 1.0)
     {
-        printf("\033[31m GRID: OUTAGE\033[0m"); // Rød tekst
+        printf("\033[31m GRID: OUTAGE\033[0m"); // red code
     }
     else
     {
-        printf("\033[32m GRID: %6.2lf\033[0m", gridAverage); // Grøn tekst
+        printf("\033[32m GRID: %6.2lf\033[0m", grid); // green code
     }
 
-    printf("| \033[34mSUSTAINABLE: %6.2lf\033[0m", sustainAverage); // Blå tekst
-    printf("| \033[36mUSAGE: %6.2lf\033[0m", usageAverage);         // Cyan tekst
+    printf("| \033[34mSUSTAINABLE: %6.2lf\033[0m", sustain); // blue code
+    printf("| \033[36mUSAGE: %6.2lf\033[0m", usage);         // cyan code
+    // line end
     printf("\n");
 }
 
@@ -224,6 +236,9 @@ double calcArrayAverage(double array[], int length)
     return average = sum / length;
 }
 
+/// @brief Given an array of file indexes, pretty print their number and name (in file system).
+/// @param files Files to print out
+/// @param fileArrayLength Amount of files
 void printDir(FileIndex files[], int fileArrayLength)
 {
     for (int i = 0; i < fileArrayLength; i++)
@@ -232,16 +247,16 @@ void printDir(FileIndex files[], int fileArrayLength)
     }
 }
 
-/// @brief Choose a file from a user input
-/// @param files
-/// @param fileArrayLength
-/// @param input
-/// @return The name of the file from its number
-char *getFileName(FileIndex files[], int fileArrayLength, int userInput)
+/// @brief Return the name of a file from its number.
+/// @param files All the files
+/// @param fileArrayLength Amount of files
+/// @param number The file number to look for
+/// @return The name of the file from its number (can be null)
+char *getFileName(FileIndex files[], int fileArrayLength, int number)
 {
     for (int i = 0; i < fileArrayLength; i++)
     {
-        if (userInput == files[i].number)
+        if (number == files[i].number)
         {
             return files[i].filename;
         }
@@ -249,16 +264,20 @@ char *getFileName(FileIndex files[], int fileArrayLength, int userInput)
     return NULL;
 }
 
-/// @brief Writes an array of PowerStructs into memory from a file name.
-/// @param fileName
-/// @param powerStructs
-/// @return Success code for writing to memory
+/// @brief Reads an array of power structs from entries found in a file.
+/// @param filename The name of the file (should be found in current directory)
+/// @param powerStructs Array to write to (size <= amount of entries found in file)
+/// @return Success code for reading from file
 int getFile(char *filename, PowerStruct powerStructs[])
 {
     return getLinesFromFile(filename, powerStructs);
 }
 
-int runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
+/// @brief Lets the user read the data from a file (pretty printed).
+/// @param files All the files found
+/// @param powerStructs All the
+/// @return Success code (fails if looking for non-existent file)
+int userReadFiles(FileIndex files[], PowerStruct powerStructs[])
 {
     int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
     printDir(files, numberOfFiles);              // Print filnavne og numre
@@ -291,7 +310,7 @@ int runStandardProgram(FileIndex files[], PowerStruct powerStructs[])
 /// @param files
 /// @param powerStructs
 /// @returns result code
-int editData(FileIndex files[], PowerStruct powerStructs[])
+int userEditData(FileIndex files[], PowerStruct powerStructs[])
 {
     // ask user to write single data point
     printf("Write a single data point, specified as 3 decimal numbers separated by space, e.g. `2.0 3.1 151`\n> ");
