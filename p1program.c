@@ -10,33 +10,32 @@ typedef struct
     char filename[256];
 } FileIndex;
 
-/// @brief
-/// A struct containing information about the power supplied by the grid, the power generated from sustainable energy and the usage.
+/// @brief A struct containing information about the power supplied by the grid, the power generated from sustainable energy and the usage.
 typedef struct
 {
     double GRID;
     double SUSTAIN;
     double USAGE;
-} PowerStruct;
+} Power;
 
-int getLinesFromFile(char *fileName, PowerStruct powerStructs[]);
+int getLinesFromFile(const char *fileName, Power powerData[]);
 int getDirectoryData(FileIndex *files);
-void printStruct(PowerStruct power[], int powerArrayLength);
+void printStruct(Power power[], int powerArrayLength);
 void print_point(double grid, double sustain, double usage);
 double calcArrayAverage(double array[], int length);
 void printDir(FileIndex files[], int fileArrayLength);
-char *getFileName(FileIndex files[], int fileArrayLength, int input);
-int getFile(char *fileName, PowerStruct powerStructs[]);
-int userReadFiles(FileIndex files[], PowerStruct powerStructs[]);
-int userEditData(FileIndex files[], PowerStruct powerStructs[]);
+char *getFileName(FileIndex files[], int fileArrayLength, int number);
+int getFile(char *fileName, Power powerData[]);
+int userReadFiles(FileIndex files[], Power powerData[]);
+int userEditData(FileIndex files[], Power powerData[]);
 
 int main(int argc, char *argv[])
-{ // Input from the user determeining what the program should do
+{ // Input from the user determining what the program should do
     int UserMenuInput;
     // test
     if (argv[1] != NULL)
     {
-        int number = atoi(argv[1]);
+        const int number = atoi(argv[1]);
         printf("User input received: %d\n", number);
         UserMenuInput = number;
     }
@@ -48,26 +47,28 @@ int main(int argc, char *argv[])
         printf("> ");
         scanf(" %d", &UserMenuInput);
     }
-    // Array of files in a Dirdirectory
-    FileIndex files[1024]; // Array of structs fstructs based on a line in a file
+    // Array of files in a directory
+    FileIndex files[1024]; // Array of structs based on a line in a file
 
-    // Switch statement based on the user input     PowerStruct powerStructs[2048];
+    // Switch statement based on the user input
+    Power powerData[2048];
 
     switch (UserMenuInput)
     {
     case 1:
-        return userReadFiles(files, powerStructs);
+        return userReadFiles(files, powerData);
     case 2:
-        return userEditData(files, powerStructs);
+        return userEditData(files, powerData);
     default:
         return -1;
     }
 }
 
 /// @brief Print all the data in a file within the `./data/` directory.
-/// @param fhow many spaces are filled in the powerstruct array
+/// @param fileName The
+/// @param powerData Array to be filled with data
 /// @return a status code?
-int getLinesFromFile(char *fileName, PowerStruct powerStructs[])
+int getLinesFromFile(const char *fileName, Power powerData[])
 {
     UU // Full name of hethe              path and filename
         char fileToOpen[256];
@@ -90,16 +91,16 @@ int getLinesFromFile(char *fileName, PowerStruct powerStructs[])
     // which means that the first line in the data file should not be empty
     while (fgets(line, sizeof(line), fptr))
     {
-        PowerStruct nextDataPoint;
+        Power nextDataPoint;
         int result = sscanf(line, " %lf %lf %lf", &nextDataPoint.GRID, &nextDataPoint.SUSTAIN, &nextDataPoint.USAGE);
         if (result != 3)
         {
             // data point was empty (imagine an empty line at the start of the file)
-            // if we did not do this, powerStructs would have a value of `0.0 0.0 0.0` at this index.
+            // if we did not do this, powerData would have a value of `0.0 0.0 0.0` at this index.
             continue;
         }
 
-        powerStructs[index] = nextDataPoint;
+        powerData[index] = nextDataPoint;
         index++;
     }
 
@@ -113,9 +114,9 @@ int getLinesFromFile(char *fileName, PowerStruct powerStructs[])
 /// @return The number of files
 int getDirectoryData(FileIndex *files)
 {
-    DIR *directory;
-    struct dirent *entry;
-    int fileNumber = 0;
+    DIR *directory;       // Pointer to entry of DIR(Directory) type
+    struct dirent *entry; // Pointer to a dirent(directory entity) type - contains info about the directory
+    int fileNumber = 0;   // Counter for the number of files
 
     directory = opendir("./data");
 
@@ -159,7 +160,7 @@ int getDirectoryData(FileIndex *files)
 /// @brief Given some power data, pretty print it
 /// @param power the data
 /// @param powerArrayLength the length of the data
-void printStruct(PowerStruct power[], int powerArrayLength)
+void printStruct(Power power[], int powerArrayLength)
 {
     // Get the values
 
@@ -266,18 +267,18 @@ char *getFileName(FileIndex files[], int fileArrayLength, int number)
 
 /// @brief Reads an array of power structs from entries found in a file.
 /// @param filename The name of the file (should be found in current directory)
-/// @param powerStructs Array to write to (size <= amount of entries found in file)
+/// @param powerData Array to write to (size <= amount of entries found in file)
 /// @return Success code for reading from file
-int getFile(char *filename, PowerStruct powerStructs[])
+int getFile(char *filename, Power powerData[])
 {
-    return getLinesFromFile(filename, powerStructs);
+    return getLinesFromFile(filename, powerData);
 }
 
 /// @brief Lets the user read the data from a file (pretty printed).
 /// @param files All the files found
-/// @param powerStructs All the
+/// @param powerData All the
 /// @return Success code (fails if looking for non-existent file)
-int userReadFiles(FileIndex files[], PowerStruct powerStructs[])
+int userReadFiles(FileIndex files[], Power powerData[])
 {
     int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
     printDir(files, numberOfFiles);              // Print filnavne og numre
@@ -287,34 +288,34 @@ int userReadFiles(FileIndex files[], PowerStruct powerStructs[])
     scanf(" %d", &userInput);
 
     // get data of file that the user wrote out, if it exists
-    // this writes to powerStructs in the process
+    // this writes to powerData in the process
     char *fileName = getFileName(files, numberOfFiles, userInput);
     if (fileName == NULL)
     {
         printf("No such file was indexed.");
         return -1;
     }
-    int powerLength = getFile(fileName, powerStructs);
+    int powerLength = getFile(fileName, powerData);
     if (powerLength == -1)
     {
         printf("No such file was indexed.");
         return -1;
     }
 
-    printStruct(powerStructs, powerLength);
+    printStruct(powerData, powerLength);
     printf("\n");
     return 0;
 }
 
 /// @brief Prompts user to create a new file or edit (append) and existing file.
-/// @param files
-/// @param powerStructs
-/// @returns result code
-int userEditData(FileIndex files[], PowerStruct powerStructs[])
+/// @param files Array to store files
+/// @param powerData Array to store power data
+/// @returns Result code
+int userEditData(FileIndex files[], Power powerData[])
 {
     // ask user to write single data point
     printf("Write a single data point, specified as 3 decimal numbers separated by space, e.g. `2.0 3.1 151`\n> ");
-    PowerStruct newDataPoint;
+    Power newDataPoint;
     scanf("%lf %lf %lf", &newDataPoint.GRID, &newDataPoint.SUSTAIN, &newDataPoint.USAGE);
     printf("received %lf, %lf, %lf\n\n", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
 
