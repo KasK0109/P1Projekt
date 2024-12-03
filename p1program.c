@@ -70,21 +70,23 @@ int main(int argc, char *argv[])
 /// @return a status code?
 int getLinesFromFile(const char *fileName, Power powerData[])
 {
-    UU // Full name of hethe              path and filename
-        char fileToOpen[256];
-    copies into the fileTopOpen varia ble
-        strcpy(fileToOpen, "./data/"); // concats the filename into the fileToOpen variable `./data/`
-    strcat(fileToOpen, fileName);      // `./data/<fileName>`
-                                       // File pointerr tto that opoints to  theFile pointer that points to an open file in read mode
+    char fileToOpen[256];
+
+    strcpy(fileToOpen, "./data/"); // `./data/`
+    strcat(fileToOpen, fileName);  // `./data/<fileName>`
+
+    // File pointer that points to an open file in read mode
     FILE *fptr = fopen(fileToOpen, "r");
     if (fptr == NULL)
-        printf(File doesnot eist : % c, fileToOpen);
-    { // happens if file does not exist
+    {
+        // happens if file does not exist
+        printf("File does not exist: %s", fileToOpen);
         exit(EXIT_FAILURE);
     }
-    // / Char array
-    //  Character array that represents a line in the file   char line[1024];
-    int index = 0; // Index that keeps track of which position in the powerstruct array the program is at
+    // Character array that represents a line in the file
+    char line[256];
+    // Index that keeps track of which position in the array the program is at
+    int index = 0;
 
     // note: sscanf scans the line starting from the first line.
     // if any line is empty, it stops collecting data,
@@ -280,12 +282,12 @@ int getFile(char *filename, Power powerData[])
 /// @return Success code (fails if looking for non-existent file)
 int userReadFiles(FileIndex files[], Power powerData[])
 {
-    int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
+    const int numberOfFiles = getDirectoryData(files); // Antallet af filer i en mappe
     printDir(files, numberOfFiles);              // Print filnavne og numre
 
     int userInput = 0;
     printf("Type the number of the file you want to see:\n> ");
-    scanf(" %d", &userInput);
+    scanf("%d", &userInput);
 
     // get data of file that the user wrote out, if it exists
     // this writes to powerData in the process
@@ -295,7 +297,7 @@ int userReadFiles(FileIndex files[], Power powerData[])
         printf("No such file was indexed.");
         return -1;
     }
-    int powerLength = getFile(fileName, powerData);
+    const int powerLength = getFile(fileName, powerData);
     if (powerLength == -1)
     {
         printf("No such file was indexed.");
@@ -316,6 +318,7 @@ int userEditData(FileIndex files[], Power powerData[])
     // ask user to write single data point
     printf("Write a single data point, specified as 3 decimal numbers separated by space, e.g. `2.0 3.1 151`\n> ");
     Power newDataPoint;
+
     scanf("%lf %lf %lf", &newDataPoint.GRID, &newDataPoint.SUSTAIN, &newDataPoint.USAGE);
     printf("received %lf, %lf, %lf\n\n", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
 
