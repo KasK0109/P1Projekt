@@ -52,7 +52,7 @@ typedef struct {
 #define POWER_ARRAY_SIZE FILE_ARRAY_SIZE
 #define PATH_CHAR_SIZE 1024
 
-int fetchContentFromFile(const char *filename, Power powerData[], int *powerDataLength);
+int fetchContentFromFile(const char *filename, Power powerData[], int *powerDataIndex);
 
 int loadDirectoryData(FileIndex files[], int *fileCount);
 
@@ -62,7 +62,7 @@ void print_point(double grid, double sustain, double usage);
 
 void printDir(FileIndex files[], int fileCount);
 
-int fetchFileName(const FileIndex files[], int fileArrayLength, int number, const char filename[]);
+int fetchFileName(const FileIndex files[], int fileCount, int number, char *filename);
 
 int userPrintFile();
 
@@ -102,9 +102,9 @@ int main(int argc, char *argv[]) {
 /// @brief Print all the data in a file within the `./data/` directory.
 /// @param filename The name of the file we wish to open
 /// @param powerData Array to be filled with data
-/// @param powerDataLength Amount of data points
+/// @param powerDataIndex Amount of data points
 /// @return Exit code (fails if file does not exist)
-int fetchContentFromFile(const char *filename, Power powerData[], int *powerDataLength) {
+int fetchContentFromFile(const char *filename, Power powerData[], int *powerDataIndex) {
     char filePath[256];
 
     strcpy(filePath, "./data/"); // `./data/`
@@ -113,31 +113,30 @@ int fetchContentFromFile(const char *filename, Power powerData[], int *powerData
     // File pointer that points to an open file in read mode
     FILE *fptr = fopen(filePath, "r"); // file is opened
     if (fptr == NULL) {
-        // happens if file does not exist
-        printf("File does not exist: %s", filePath);
+        printf("File does not exist: %s\n", filePath);
         return EXIT_FAILURE;
     }
 
     // Character array that represents a line in the file
     char line[256];
     // Index that keeps track of which position in the array the program is at
-    *powerDataLength = 0;
+    *powerDataIndex = 0;
 
     // note: sscanf scans the line starting from the first line.
     // if any line is empty, it stops collecting data,
     // which means that the first line in the data file should not be empty
     while (fgets(line, sizeof(line), fptr)) {
-        Power nextDataPoint;
-        const int result = sscanf(line, " %lf %lf %lf", &nextDataPoint.GRID, &nextDataPoint.SUSTAIN,
-                                  &nextDataPoint.USAGE);
+        Power nextPoint;
+        const int result = sscanf(line, "%lf %lf %lf", &nextPoint.GRID, &nextPoint.SUSTAIN,
+                                  &nextPoint.USAGE);
         if (result != 3) {
             // data point was empty (imagine an empty line at the start of the file)
             // if we did not do this, powerData would have a value of `0.0 0.0 0.0` at this index.
             continue;
         }
 
-        powerData[*powerDataLength] = nextDataPoint;
-        powerDataLength++;
+        powerData[*powerDataIndex] = nextPoint;
+        (*powerDataIndex)++;
     }
 
     fclose(fptr); // file is closed
@@ -145,39 +144,40 @@ int fetchContentFromFile(const char *filename, Power powerData[], int *powerData
 }
 
 /// @brief Fetch directory data, relative to running directory. Also prints information as it goes.
-/// @param files Array to write file data into
-/// @param fileCount The number of files
+/// @param files Array to write file data into (only csv files)
+/// @param fileCount The number of files (csv files)
 /// @return Exit code (may fail when looking for the data folder)
 int loadDirectoryData(FileIndex files[], int *fileCount) {
     // Pointer to entry of DIR(Directory) type
     struct dirent *entry; // Pointer to a dirent(directory entity) type - contains info about the directory
 
-    DIR *directory = opendir(".");
-
+    char dirname[] = "./data";
+    DIR *directory = opendir(dirname);
     if (directory == NULL) {
-        printf("Error opening folder\n");
+        printf("Error opening folder (null) at path %s\n", dirname);
         return EXIT_FAILURE;
     }
 
+    int fileIndex = 0;
     while ((entry = readdir(directory)) != NULL) {
+        printf("Found entry '%s'...\n", entry->d_name);
         // Check if entry is a regular file and ends with ".csv"
         if (entry->d_type == DT_REG) {
             // Find the length of the filename
-            const int len = strlen(entry->d_name); // NOLINT(*-narrowing-conversions)
+            const size_t len = strlen(entry->d_name);
+            printf("Found len (%d) ...\n", len);
 
             // Check if the file has a ".csv" extension
             if (len > 4 && strcmp(entry->d_name + len - 4, ".csv") == 0) {
-                FileIndex *file = &files[*fileCount];
-                file->number = *fileCount + 1;
-
-                // Corrected strncpy:
-                strncpy(file->filename, entry->d_name, sizeof(file->filename) - 1);
-                file->filename[sizeof(file->filename) - 1] = '\0';
-
-                (*fileCount)++;
+                printf("File has csv extension!\n");
+                FileIndex *file = &files[fileIndex];
+                file->number = fileIndex + 1;
+                strcpy(file->filename, entry->d_name);
+                fileIndex++;
             }
         }
     }
+    *fileCount = fileIndex;
 
     if (closedir(directory) != EXIT_SUCCESS) {
         printf("Error closing directory.\n");
@@ -246,7 +246,7 @@ void print_point(const double grid, const double sustain, const double usage) {
 /// @param files Files to print out
 /// @param fileCount Amount of files
 void printDir(FileIndex files[], const int fileCount) {
-    printf("Files in directory: %d\n", fileCount);
+    printf("Files in directory (%d):\n", fileCount);
     for (int i = 0; i < fileCount; i++) {
         printf("Number: %d - Filename: %s\n", files[i].number, files[i].filename);
     }
@@ -254,14 +254,14 @@ void printDir(FileIndex files[], const int fileCount) {
 
 /// @brief Return the name of a file from its number.
 /// @param files All the files
-/// @param fileArrayLength Amount of files
+/// @param fileCount Amount of files
 /// @param number The file number to look for
 /// @param filename
 /// @return The name of the file from its number (can be null)
-int fetchFileName(const FileIndex files[], const int fileArrayLength, const int number, const char filename[]) {
-    for (int i = 0; i < fileArrayLength; i++) {
+int fetchFileName(const FileIndex files[], const int fileCount, const int number, char filename[]) {
+    for (int i = 0; i < fileCount; i++) {
         if (number == files[i].number) {
-            filename = (char *) files[i].filename;
+            strcpy(filename, files[i].filename);
             return EXIT_SUCCESS;
         }
     }
@@ -284,17 +284,18 @@ int userSelectsFile(Power powerData[], int *powerLength) {
     printDir(files, fileCount);
 
     int userInput = 0;
-    printf("Type the number of the file you want to see:\n> ");
+    printf("Type the number of the file you want to select:\n> ");
     scanf("%d", &userInput);
 
     // get data of file that the user wrote out, if it exists
     // this writes to powerData in the process
-    const char filename[PATH_CHAR_SIZE];
+    char filename[FILENAME_MAX];
     const int filenameFetchResult = fetchFileName(files, fileCount, userInput, filename);
     if (filenameFetchResult != EXIT_SUCCESS) {
         printf("No such file was indexed.\n");
         return EXIT_FAILURE;
     }
+    printf("File name: %s\n", filename);
     const int dataFetchResult = fetchContentFromFile(filename, powerData, powerLength);
     if (dataFetchResult != EXIT_SUCCESS) {
         printf("No such file was indexed.\n");
@@ -321,11 +322,13 @@ int userPrintFile() {
 /// @returns Result code
 int userEditFile() {
     // ask user to write single data point
-    printf("Write a single data point, specified as 3 decimal numbers separated by space, e.g. `2.0 3.1 151`\n> ");
-    Power newDataPoint;
+    printf("Write a single data point, specified as 3 decimal numbers separated by space.\n");
+    printf("A decimal number is some amount of digits (e.g. `5`) and an optional fractional (e.g. `.81`).\n");
+    printf("Example: `2.0 3.1 151`\n> ");
+    Power newPoint;
 
-    scanf("%lf %lf %lf", &newDataPoint.GRID, &newDataPoint.SUSTAIN, &newDataPoint.USAGE);
-    printf("received %lf, %lf, %lf\n\n", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+    scanf("%lf %lf %lf", &newPoint.GRID, &newPoint.SUSTAIN, &newPoint.USAGE);
+    printf("received %lf, %lf, %lf\n\n", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE);
 
     // ask user where to put data point (new file or existing)
     printf("Do you want to create new file (`N`), or append (`A`) an existing file?\n> ");
@@ -336,17 +339,19 @@ int userEditFile() {
     switch (answer) {
         case 'A':
         case 'a': {
-            printf("Existing files:\n");
             FileIndex files[FILE_ARRAY_SIZE];
             int fileCount;
             const int dirLoadResult = loadDirectoryData(files, &fileCount); // Antallet af filer i en mappe
             if (dirLoadResult != EXIT_SUCCESS) {
+                printf("Failed to load directory.\n");
                 return EXIT_FAILURE;
             }
+            printf("Existing files:\n");
             printDir(files, fileCount); // Print filnavne og numre
 
             char path[PATH_CHAR_SIZE];
             strcpy(path, "./data/");
+            // char path[PATH_CHAR_SIZE] = "./data/"; // why would this not work?
 
             int userInput = 0;
             printf("What is the number of the file you want to append to?\n> ");
@@ -357,9 +362,11 @@ int userEditFile() {
             if (filenameFetchResult != EXIT_SUCCESS) {
                 return EXIT_FAILURE;
             }
+            printf("Fetched file. Appending...\n");
             FILE *fptr = fopen(strcat(path, filename), "a");
-            fprintf(fptr, "%lf %lf %lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+            fprintf(fptr, "%lf %lf %lf", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE);
             fclose(fptr);
+            printf("Wrote [%lf %lf %lf] to %s", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE, filename);
         }
         break;
         case 'N':
@@ -371,7 +378,7 @@ int userEditFile() {
             scanf(" %s", &fileName);
 
             FILE *fptr = fopen(strcat(path, fileName), "w");
-            fprintf(fptr, "%lf %lf %lf", newDataPoint.GRID, newDataPoint.SUSTAIN, newDataPoint.USAGE);
+            fprintf(fptr, "%lf %lf %lf", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE);
             fclose(fptr);
         }
         break;
@@ -385,12 +392,12 @@ int userEditFile() {
 /// @brief Lets the user view a point plot of file data.
 /// @return Exit code (reading a file may fail)
 int userPlotData() {
-    int dataLength;
-    Power data[];
-    const int selectResult = userSelectsFile(data, &dataLength);
-    if (selectResult != EXIT_SUCCESS) {
-
-    }
+    // int dataLength;
+    // Power data[];
+    // const int selectResult = userSelectsFile(data, &dataLength);
+    // if (selectResult != EXIT_SUCCESS) {
+    //
+    // }
 
     return 0;
 }
