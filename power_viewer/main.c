@@ -60,9 +60,9 @@ void printStruct(Power power[], int powerArrayLength);
 
 void print_point(double grid, double sustain, double usage);
 
-void printDir(FileIndex files[], int fileArrayLength);
+void printDir(FileIndex files[], int fileCount);
 
-int fetchFileName(FileIndex files[], int fileArrayLength, int number, char filename[]);
+int fetchFileName(const FileIndex files[], int fileArrayLength, int number, const char filename[]);
 
 int userPrintFile();
 
@@ -152,10 +152,10 @@ int loadDirectoryData(FileIndex files[], int *fileCount) {
     // Pointer to entry of DIR(Directory) type
     struct dirent *entry; // Pointer to a dirent(directory entity) type - contains info about the directory
 
-    DIR *directory = opendir("./data");
+    DIR *directory = opendir(".");
 
     if (directory == NULL) {
-        printf("Error opening folder");
+        printf("Error opening folder\n");
         return EXIT_FAILURE;
     }
 
@@ -244,9 +244,10 @@ void print_point(const double grid, const double sustain, const double usage) {
 
 /// @brief Given an array of file indexes, pretty print their number and name (in file system).
 /// @param files Files to print out
-/// @param fileArrayLength Amount of files
-void printDir(FileIndex files[], const int fileArrayLength) {
-    for (int i = 0; i < fileArrayLength; i++) {
+/// @param fileCount Amount of files
+void printDir(FileIndex files[], const int fileCount) {
+    printf("Files in directory: %d\n", fileCount);
+    for (int i = 0; i < fileCount; i++) {
         printf("Number: %d - Filename: %s\n", files[i].number, files[i].filename);
     }
 }
@@ -257,10 +258,10 @@ void printDir(FileIndex files[], const int fileArrayLength) {
 /// @param number The file number to look for
 /// @param filename
 /// @return The name of the file from its number (can be null)
-int fetchFileName(const FileIndex files[], const int fileArrayLength, const int number, char *filename[]) {
+int fetchFileName(const FileIndex files[], const int fileArrayLength, const int number, const char filename[]) {
     for (int i = 0; i < fileArrayLength; i++) {
         if (number == files[i].number) {
-            *filename = (char*)files[i].filename;
+            filename = (char *) files[i].filename;
             return EXIT_SUCCESS;
         }
     }
@@ -275,8 +276,12 @@ int fetchFileName(const FileIndex files[], const int fileArrayLength, const int 
 int userSelectsFile(Power powerData[], int *powerLength) {
     FileIndex files[FILE_ARRAY_SIZE];
     int fileCount;
-    const int numberOfFiles = loadDirectoryData(files, &fileCount);
-    printDir(files, numberOfFiles);
+    const int loadSucces = loadDirectoryData(files, &fileCount);
+    if (loadSucces == EXIT_FAILURE) {
+        printf("Failed to load directory.\n");
+        return EXIT_FAILURE;
+    }
+    printDir(files, fileCount);
 
     int userInput = 0;
     printf("Type the number of the file you want to see:\n> ");
@@ -284,8 +289,8 @@ int userSelectsFile(Power powerData[], int *powerLength) {
 
     // get data of file that the user wrote out, if it exists
     // this writes to powerData in the process
-    char filename[PATH_CHAR_SIZE];
-    const int filenameFetchResult = fetchFileName(files, numberOfFiles, userInput, filename);
+    const char filename[PATH_CHAR_SIZE];
+    const int filenameFetchResult = fetchFileName(files, fileCount, userInput, filename);
     if (filenameFetchResult != EXIT_SUCCESS) {
         printf("No such file was indexed.\n");
         return EXIT_FAILURE;
@@ -420,9 +425,9 @@ void print_plot_whole_cut_stretched(const Power powerData[], const int length) {
     }
 }
 
-/// @brief Display a basic plot over the data points, averaged to fit an 80-width console.
-/// @param powerData The data that is displayed
-/// @param length The amount of data points
-void print_plot_evenly_stretched(const Power powerData[], const int length) {
-    // todo: impl
-}
+// /// @brief Display a basic plot over the data points, averaged to fit an 80-width console.
+// /// @param powerData The data that is displayed
+// /// @param length The amount of data points
+// void print_plot_evenly_stretched(const Power powerData[], const int length) {
+//     // todo: impl
+// }
