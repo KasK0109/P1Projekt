@@ -12,15 +12,7 @@
  * Hvis projektet har flere analysefejl i din editor, kan det skyldes at du ikke har valgt den rigtige toolchain.
  * Hvis du er i CLion, kan du vælge den version af MinGW som du har installeret via IMPR-kurset.
  *
- * TODO: Fix character array passing.
- * I am trying to make it so we only pass pointers around by parameter,
- * but there is the problem of how long char* / char[] are kept alive.
- * Locally scoped points are kept alive always,
- * but the thing they point to might get deallocated if they point to local value that goes out of scope.
- * This can be fixed with malloc, but I want to avoid this.
- * The initial solution was just to keep a top down reference to every value,
- * like some sort of arena, and that might be what I need to go back to?
- * * Licens: GPL 3.0
+ * Licens: GPL 3.0
  */
 
 #include <assert.h>
@@ -391,29 +383,111 @@ int userEditFile() {
     return 0;
 }
 
+/// @brief linear interpolation
+/// @param a starting value (t = 0)
+/// @param b ending value (t = 1)
+/// @param t fraction (standard range would be 0 to 1)
+/// @note not clamped
+/// @return value between a and b
+double lerp(const double a, const double b, const double t) {
+    return ((1.0 - t) * a) + (b * t);
+}
 
-double inv_lerp(double a, double b, double v) {
+/// @brief inverse linear interpolation
+/// @param a starting value (t = 0)
+/// @param b ending value (t = 1)
+/// @param v value we want a fraction from (standard range would be between a and b)
+/// @note not clamped
+/// @return fraction between a and b
+double inv_lerp(const double a, const double b, const double v) {
     return (v - a) / (b - a);
 }
 
-/// @brief Display a basic plot over the data points, cut to evenly scale to fit an 80-width console.
-/// @param powerData The data that is displayed
-/// @param length The amount of data points
-void print_plot_whole_cut_stretched(const Power powerData[], const int length) {
-    printf("GRID PLOT:\n");
-
 #define HEIGHT 8
 #define WIDTH 80
-    // make graph fit on screen, averaging out values if there are too many
-    const int cut_length = length % WIDTH;
-    const int values_per_point = new_max(1, length / WIDTH);
+
+/// @brief Display a basic point plot from the data,
+/// scaled by stretching and weighing to fit discrete coordinates.
+/// @param source_data The data that is displayed
+/// @param source_length The amount of data points
+void print_plot_weighted_stretched(const Power source_data[], const int source_length) {
+    // # if weight = 0.9:
+    // point[0] = (data[0] * 0.9 + data[1] * (1.0-0.9)) / 0.9
+    // point[1] = (data[1] * (1.0-0.9 * 0.9)
+    // # if weight = 1.1:
+    // point[0] = data[0] * 1.1 + data[1] * (1.0-1.1)) / 1.1
+    // # if weight = 2.0:
+    // point[0] = data[0] + data[1] / 2
+
+    // There are `source_length` weights in total.
+    const double points_per_weight = (double) WIDTH / (double) source_length;
+    const double weights_per_point = (double) source_length / (double) WIDTH; // equivalent to `1/points_per_weight`
+
+    double max_point_value = 0.0;
+    double min_point_value = FLT_MAX;
+
+    double points[WIDTH];
+    double rolling_value_total = 0.0;
+    double rolling_point_total = 0.0; // if WIDTH <= source_length, this is always <2.0
+    size_t point_index = 0;
+    for (size_t source_index = 0; source_index < source_length; source_index++) {
+        const double value = source_data[source_index].GRID;
+        rolling_point_total += points_per_weight;
+        while (rolling_point_total >= weights_per_point) {
+            // there may be multiple points per index (WIDTH > source_length)
+            const double fill_point_weight = (rolling_point_total - points_per_weight) / weights_per_point;
+            const double fill_value_weight = value * fill_point_weight;
+            const double proportional_value = rolling_value_total + fill_value_weight;
+
+            if (proportional_value > max_point_value) {
+                max_point_value = proportional_value;
+            } // not else-if, because if there may be only one point
+            if (proportional_value < min_point_value) {
+                min_point_value = proportional_value;
+            }
+            points[point_index] = proportional_value;
+            point_index += 1;
+            rolling_value_total += value - fill_value_weight;
+            rolling_point_total -= weights_per_point;
+        }
+    }
+    // note: the above math does not do what I want it to do; it takes from rolling value,
+    // but it does not apply "proportionally" according to point/data relevancy
+    // print plot by going over each data point *per* print height
+    for (int y = HEIGHT; y > 0; y--) {
+        for (int x = 0; x < WIDTH; x++) {
+            // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
+            // every point may be multiple points
+            const double raw_point = points[x];
+            const double t = inv_lerp(min_point_value, max_point_value, raw_point);
+            const int show_height = HEIGHT * t;
+            if (show_height >= y && show_height < (y + 1)) {
+                printf("O"); // single point char
+            } else {
+                printf(" "); // single space char
+            }
+        }
+        printf("\n"); // end line
+    }
+
+
+    printf("GRID PLOT:\n");
+}
+
+/// @brief Display a basic plot over the data points, cut to evenly scale to fit the terminal.
+/// @param source_data The data that is displayed
+/// @param source_length The amount of data points
+void print_plot_whole_cut_stretched(const Power source_data[], const int source_length) {
+    // make graph fit on screen, averaging out multiples of values if there are too many
+    const int cut_length = source_length % WIDTH;
+    const int values_per_point = new_max(1, source_length / WIDTH);
     double max_point = 0; // in order to scale
     double min_point = FLT_MAX; // idk what the right thing to use is
-    double compacted[cut_length];
+    double points[cut_length]; // each element is one discrete x coordinate
     for (int x = 0; x < cut_length; x++) {
         double pointSum = 0.0;
         for (int i = 0; i < values_per_point; i++) {
-            pointSum += powerData[x + i].GRID;
+            pointSum += source_data[x + i].GRID;
         }
         const double point = pointSum / (double) values_per_point;
         if (point > max_point) {
@@ -421,20 +495,21 @@ void print_plot_whole_cut_stretched(const Power powerData[], const int length) {
         } else if (point < min_point) {
             min_point = pointSum;
         }
-        compacted[x] = point;
+        points[x] = point;
     }
     assert(max_point > min_point);
 
     printf("Points (width): %d\n", cut_length);
     printf("Largest point: %lf\n", max_point);
     printf("Smallest point: %lf\n", min_point);
-
+    printf("\n");
+    printf("GRID PLOT:\n");
     // print plot by going over each data point *per* print height
     for (int y = HEIGHT; y > 0; y--) {
         for (int x = 0; x < cut_length; x++) {
             // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
             // every point may be multiple points
-            const double raw_point = compacted[x];
+            const double raw_point = points[x];
             const double t = inv_lerp(min_point, max_point, raw_point);
             const int show_height = HEIGHT * t;
             if (show_height >= y && show_height < (y + 1)) {
@@ -458,7 +533,9 @@ int userPlotData() {
         printf("Failed to get a file.");
         return EXIT_FAILURE;
     }
+    // print_plot_weighted_stretched(data, dataLength);
     print_plot_whole_cut_stretched(data, dataLength);
+
 
     return EXIT_SUCCESS;
 }
