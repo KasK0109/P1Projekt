@@ -23,7 +23,9 @@
  * * Licens: GPL 3.0
  */
 
+#include <assert.h>
 #include <dirent.h>
+#include <float.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -273,7 +275,7 @@ int fetchFileName(const FileIndex files[], const int fileCount, const int number
 /// @param powerData The data found in the file
 /// @param powerLength The amount of data points found in the file
 /// @return Exit code (fails if unable to read file)
-int userSelectsFile(Power powerData[], int *powerLength) {
+int userLoadsFile(Power powerData[], int *powerLength) {
     FileIndex files[FILE_ARRAY_SIZE];
     int fileCount;
     const int loadSucces = loadDirectoryData(files, &fileCount);
@@ -310,7 +312,7 @@ int userSelectsFile(Power powerData[], int *powerLength) {
 int userPrintFile() {
     Power powerData[POWER_ARRAY_SIZE];
     int powerLength;
-    const int result = userSelectsFile(powerData, &powerLength);
+    const int result = userLoadsFile(powerData, &powerLength);
     if (result == 0) {
         printStruct(powerData, powerLength);
         printf("\n");
@@ -389,17 +391,9 @@ int userEditFile() {
     return 0;
 }
 
-/// @brief Lets the user view a point plot of file data.
-/// @return Exit code (reading a file may fail)
-int userPlotData() {
-    // int dataLength;
-    // Power data[];
-    // const int selectResult = userSelectsFile(data, &dataLength);
-    // if (selectResult != EXIT_SUCCESS) {
-    //
-    // }
 
-    return 0;
+double inv_lerp(double a, double b, double v) {
+    return (v - a) / (b - a);
 }
 
 /// @brief Display a basic plot over the data points, cut to evenly scale to fit an 80-width console.
@@ -407,29 +401,66 @@ int userPlotData() {
 /// @param length The amount of data points
 void print_plot_whole_cut_stretched(const Power powerData[], const int length) {
     printf("GRID PLOT:\n");
+
+#define HEIGHT 8
+#define WIDTH 80
+    // make graph fit on screen, averaging out values if there are too many
+    const int cut_length = length % WIDTH;
+    const int values_per_point = new_max(1, length / WIDTH);
+    double max_point = 0; // in order to scale
+    double min_point = FLT_MAX; // idk what the right thing to use is
+    double compacted[cut_length];
+    for (int x = 0; x < cut_length; x++) {
+        double pointSum = 0.0;
+        for (int i = 0; i < values_per_point; i++) {
+            pointSum += powerData[x + i].GRID;
+        }
+        const double point = pointSum / (double) values_per_point;
+        if (point > max_point) {
+            max_point = pointSum;
+        } else if (point < min_point) {
+            min_point = pointSum;
+        }
+        compacted[x] = point;
+    }
+    assert(max_point > min_point);
+
+    printf("Points (width): %d\n", cut_length);
+    printf("Largest point: %lf\n", max_point);
+    printf("Smallest point: %lf\n", min_point);
+
     // print plot by going over each data point *per* print height
-    const int HEIGHT = 8;
-    for (int y = 0; y < HEIGHT; y++) {
-        const int cut_length = length - length % 80;
+    for (int y = HEIGHT; y > 0; y--) {
         for (int x = 0; x < cut_length; x++) {
-            const double MAX_VALUE = 5.0;
-            const int scale = new_max(1, length / 80);
-            double sum = 0;
-            for (int i = 0; i < scale; i++) {
-                sum += powerData[i].GRID;
-            }
-            const double average = sum / (double) scale;
-            const double fraction = average / MAX_VALUE;
-            const double height_lower = x / (double) HEIGHT;
-            const double height_upper = (x + 1) / (double) HEIGHT;
-            if (fraction >= height_lower && fraction <= height_upper) {
-                printf(" "); // single space char
+            // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
+            // every point may be multiple points
+            const double raw_point = compacted[x];
+            const double t = inv_lerp(min_point, max_point, raw_point);
+            const int show_height = HEIGHT * t;
+            if (show_height >= y && show_height < (y + 1)) {
+                printf("O"); // single point char
             } else {
-                printf("."); // single point char
+                printf(" "); // single space char
             }
         }
         printf("\n"); // end line
     }
+}
+
+
+/// @brief Lets the user view a point plot of file data.
+/// @return Exit code (reading a file may fail)
+int userPlotData() {
+    int dataLength;
+    Power data[POWER_ARRAY_SIZE];
+    const int selectResult = userLoadsFile(data, &dataLength);
+    if (selectResult != EXIT_SUCCESS) {
+        printf("Failed to get a file.");
+        return EXIT_FAILURE;
+    }
+    print_plot_whole_cut_stretched(data, dataLength);
+
+    return EXIT_SUCCESS;
 }
 
 // /// @brief Display a basic plot over the data points, averaged to fit an 80-width console.
