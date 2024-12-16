@@ -411,46 +411,20 @@ double inv_lerp(const double a, const double b, const double v) {
 /// scaled by stretching and weighing to fit discrete coordinates.
 /// @param source_data The data that is displayed
 /// @param source_length The amount of data points
-void print_plot_weighted_stretched(const Power ignored_data[], const int ignored_length) {
-    printf("USING TEST DATA INSTEAD.\n");
-    const size_t source_length = (size_t)((double)WIDTH * 1.1);
-    double source_data[source_length];
-    for (size_t i = 0; i < source_length; i++) {
-        source_data[i] = 2 * i;
-    }
-    const int floored_ratio = (int)source_length / WIDTH;
-
+void print_plot_linear_fit(const Power source_data[], const int source_length) {
     double draw_points[WIDTH];
-    // for when source_length > WIDTH:
-    // *use* multiple source_data values per draw point
-    // for when source_length < WIDTH:
-    // *create* multiple draw points per source_data value
-    if (source_length == WIDTH) {
-        // no scaling required
-        printf("NO SCALING REQUIRED.");
-        for (size_t x = 0; x < WIDTH; x++) {
-            draw_points[x] = source_data[x];
-        }
-    } else if (source_length > WIDTH) {
-        printf("SCALING UP (assuming 1<x<2).\n");
-        // todo: ONLY handle the case where there are 1<x<2 source data point per draw point
-        // we can linearly interpolate from a value we get by interpolating
-        for (size_t x = 0; x < WIDTH; x++) {
-            const double x_t = inv_lerp(0, WIDTH, x);
-            const double i_v = lerp(0, source_length, x_t);
-            // again, below only handles *up to two values*
-            const size_t lower = (size_t)i_v; // round down
-            const size_t upper = lower + 1; // round down: this works unless lower is the same as i_v
-            const double i_t = inv_lerp(lower, upper, i_v);
-            // see: only handles two points
-            const double a = source_data[lower];
-            const double b = source_data[upper];
-            const double point = lerp(a, b, i_t);
-            draw_points[x] = point;
-        }
-    } else {
-        printf("UNHANDLED SCALING.\n");
-        return;
+    for (size_t x = 0; x < WIDTH; x++) {
+        const double x_t = inv_lerp(0, WIDTH, x);
+        const double i_v = lerp(0, source_length - 1, x_t);
+        // again, below only handles *up to two values*
+        const size_t lower = (size_t)i_v; // round down
+        const size_t upper = lower + 1; // round down: this works unless lower is the same as i_v
+        const double i_t = inv_lerp(lower, upper, i_v);
+        // see: only handles two points
+        const double a = source_data[lower].GRID;
+        const double b = source_data[upper].GRID;
+        const double point = lerp(a, b, i_t);
+        draw_points[x] = point;
     }
 
     double min_point = draw_points[0];
@@ -560,7 +534,7 @@ int userPlotData() {
         break;
         case 'S':
         case 's': {
-            print_plot_weighted_stretched(data, dataLength);
+            print_plot_linear_fit(data, dataLength);
         }
         break;
         default:
