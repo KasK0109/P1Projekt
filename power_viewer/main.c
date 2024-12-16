@@ -19,6 +19,7 @@
 #include <dirent.h>
 #include <float.h>
 #include <inttypes.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,7 +77,7 @@ int main(int argc, char *argv[]) {
         printf("Hello welcome to program menu please select:\n");
         printf("1 - view csv files\n");
         printf("2 - edit csv files\n");
-        printf("3 - plot grid from csv files\n");
+        printf("3 - plot grid from csv files (experimental)\n");
         printf("> ");
         scanf(" %d", &UserMenuInput);
     }
@@ -403,65 +404,78 @@ double inv_lerp(const double a, const double b, const double v) {
     return (v - a) / (b - a);
 }
 
-#define HEIGHT 8
+#define HEIGHT 12
 #define WIDTH 80
 
 /// @brief Display a basic point plot from the data,
 /// scaled by stretching and weighing to fit discrete coordinates.
 /// @param source_data The data that is displayed
 /// @param source_length The amount of data points
-void print_plot_weighted_stretched(const Power source_data[], const int source_length) {
-    // # if weight = 0.9:
-    // point[0] = (data[0] * 0.9 + data[1] * (1.0-0.9)) / 0.9
-    // point[1] = (data[1] * (1.0-0.9 * 0.9)
-    // # if weight = 1.1:
-    // point[0] = data[0] * 1.1 + data[1] * (1.0-1.1)) / 1.1
-    // # if weight = 2.0:
-    // point[0] = data[0] + data[1] / 2
+void print_plot_weighted_stretched(const Power ignored_data[], const int ignored_length) {
+    printf("USING TEST DATA INSTEAD.\n");
+    const size_t source_length = (size_t)((double)WIDTH * 1.1);
+    double source_data[source_length];
+    for (size_t i = 0; i < source_length; i++) {
+        source_data[i] = 2 * i;
+    }
+    const int floored_ratio = (int)source_length / WIDTH;
 
-    // There are `source_length` weights in total.
-    const double points_per_weight = (double) WIDTH / (double) source_length;
-    const double weights_per_point = (double) source_length / (double) WIDTH; // equivalent to `1/points_per_weight`
+    double draw_points[WIDTH];
+    // for when source_length > WIDTH:
+    // *use* multiple source_data values per draw point
+    // for when source_length < WIDTH:
+    // *create* multiple draw points per source_data value
+    if (source_length == WIDTH) {
+        // no scaling required
+        printf("NO SCALING REQUIRED.");
+        for (size_t x = 0; x < WIDTH; x++) {
+            draw_points[x] = source_data[x];
+        }
+    } else if (source_length > WIDTH) {
+        printf("SCALING UP (assuming 1<x<2).\n");
+        // todo: ONLY handle the case where there are 1<x<2 source data point per draw point
+        // we can linearly interpolate from a value we get by interpolating
+        for (size_t x = 0; x < WIDTH; x++) {
+            const double x_t = inv_lerp(0, WIDTH, x);
+            const double i_v = lerp(0, source_length, x_t);
+            // again, below only handles *up to two values*
+            const size_t lower = (size_t)i_v; // round down
+            const size_t upper = lower + 1; // round down: this works unless lower is the same as i_v
+            const double i_t = inv_lerp(lower, upper, i_v);
+            // see: only handles two points
+            const double a = source_data[lower];
+            const double b = source_data[upper];
+            const double point = lerp(a, b, i_t);
+            draw_points[x] = point;
+        }
+    } else {
+        printf("UNHANDLED SCALING.\n");
+        return;
+    }
 
-    double max_point_value = 0.0;
-    double min_point_value = FLT_MAX;
-
-    double points[WIDTH];
-    double rolling_value_total = 0.0;
-    double rolling_point_total = 0.0; // if WIDTH <= source_length, this is always <2.0
-    size_t point_index = 0;
-    for (size_t source_index = 0; source_index < source_length; source_index++) {
-        const double value = source_data[source_index].GRID;
-        rolling_point_total += points_per_weight;
-        while (rolling_point_total >= weights_per_point) {
-            // there may be multiple points per index (WIDTH > source_length)
-            const double fill_point_weight = (rolling_point_total - points_per_weight) / weights_per_point;
-            const double fill_value_weight = value * fill_point_weight;
-            const double proportional_value = rolling_value_total + fill_value_weight;
-
-            if (proportional_value > max_point_value) {
-                max_point_value = proportional_value;
-            } // not else-if, because if there may be only one point
-            if (proportional_value < min_point_value) {
-                min_point_value = proportional_value;
-            }
-            points[point_index] = proportional_value;
-            point_index += 1;
-            rolling_value_total += value - fill_value_weight;
-            rolling_point_total -= weights_per_point;
+    double min_point = draw_points[0];
+    double max_point = draw_points[0];
+    for (size_t x = 0; x < WIDTH; x++) {
+        const double point = draw_points[x];
+        if (point > max_point) {
+            max_point = point;
+        }
+        if (point < min_point) {
+            min_point = point;
         }
     }
-    // note: the above math does not do what I want it to do; it takes from rolling value,
-    // but it does not apply "proportionally" according to point/data relevancy
-    // print plot by going over each data point *per* print height
-    for (int y = HEIGHT; y > 0; y--) {
+    assert(min_point <= max_point);
+
+    for (int y = HEIGHT - 1; y >= 0; y--) {
         for (int x = 0; x < WIDTH; x++) {
             // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
             // every point may be multiple points
-            const double raw_point = points[x];
-            const double t = inv_lerp(min_point_value, max_point_value, raw_point);
-            const int show_height = HEIGHT * t;
-            if (show_height >= y && show_height < (y + 1)) {
+            const double raw_point = draw_points[x];
+            const double t = inv_lerp(min_point, max_point, raw_point);
+            const double point_height = round(lerp(0, HEIGHT - 1, t));
+            const int display_lower = y;
+            const int display_upper = y + 1;
+            if (point_height >= display_lower && point_height < display_upper) {
                 printf("O"); // single point char
             } else {
                 printf(" "); // single space char
@@ -469,9 +483,6 @@ void print_plot_weighted_stretched(const Power source_data[], const int source_l
         }
         printf("\n"); // end line
     }
-
-
-    printf("GRID PLOT:\n");
 }
 
 /// @brief Display a basic plot over the data points, cut to evenly scale to fit the terminal.
@@ -491,9 +502,10 @@ void print_plot_whole_cut_stretched(const Power source_data[], const int source_
         }
         const double point = pointSum / (double) values_per_point;
         if (point > max_point) {
-            max_point = pointSum;
-        } else if (point < min_point) {
-            min_point = pointSum;
+            max_point = point;
+        }
+        if (point < min_point) {
+            min_point = point;
         }
         points[x] = point;
     }
@@ -505,13 +517,13 @@ void print_plot_whole_cut_stretched(const Power source_data[], const int source_
     printf("\n");
     printf("GRID PLOT:\n");
     // print plot by going over each data point *per* print height
-    for (int y = HEIGHT; y > 0; y--) {
+    for (int y = HEIGHT - 1; y >= 0; y--) {
         for (int x = 0; x < cut_length; x++) {
             // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
             // every point may be multiple points
             const double raw_point = points[x];
             const double t = inv_lerp(min_point, max_point, raw_point);
-            const int show_height = HEIGHT * t;
+            const double show_height = (HEIGHT - 1) * t;
             if (show_height >= y && show_height < (y + 1)) {
                 printf("O"); // single point char
             } else {
@@ -533,16 +545,28 @@ int userPlotData() {
         printf("Failed to get a file.");
         return EXIT_FAILURE;
     }
-    // print_plot_weighted_stretched(data, dataLength);
-    print_plot_whole_cut_stretched(data, dataLength);
 
+    // ask user where to put data point (new file or existing)
+    printf("Do you want to use whole scale only ('W'), or stretch to fit the data (`S`) for the dataset?\n> ");
+    char answer;
+    scanf(" %c", &answer); // note the empty space, without it the buffer is not flushed for some reason
+
+    // both upper and lower case a/n are used
+    switch (answer) {
+        case 'W':
+        case 'w': {
+            print_plot_whole_cut_stretched(data, dataLength);
+        }
+        break;
+        case 'S':
+        case 's': {
+            print_plot_weighted_stretched(data, dataLength);
+        }
+        break;
+        default:
+            printf("Unknown answer");
+            return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
-
-// /// @brief Display a basic plot over the data points, averaged to fit an 80-width console.
-// /// @param powerData The data that is displayed
-// /// @param length The amount of data points
-// void print_plot_evenly_stretched(const Power powerData[], const int length) {
-//     // todo: impl
-// }
