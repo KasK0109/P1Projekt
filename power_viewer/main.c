@@ -17,7 +17,6 @@
 
 #include <assert.h>
 #include <dirent.h>
-#include <float.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
@@ -25,7 +24,6 @@
 #include <string.h>
 #include "util.c"
 
-// #include <math.h>
 #define new_max(x,y) (((x) >= (y)) ? (x) : (y))
 #define new_min(x,y) (((x) <= (y)) ? (x) : (y))
 
@@ -404,11 +402,13 @@ double inv_lerp(const double a, const double b, const double v) {
     return (v - a) / (b - a);
 }
 
-#define HEIGHT 12
+#define HEIGHT 8
 #define WIDTH 80
 
 /// @brief Display a basic point plot from the data,
 /// scaled by stretching and weighing to fit discrete coordinates.
+/// WARNING: This does not average out points, and simply picks the two closest points to scale with.
+/// This means that it will literally skip certain points for source_length values above WIDTH*2.
 /// @param source_data The data that is displayed
 /// @param source_length The amount of data points
 void print_plot_linear_fit(const Power source_data[], const int source_length) {
@@ -440,6 +440,11 @@ void print_plot_linear_fit(const Power source_data[], const int source_length) {
     }
     assert(min_point <= max_point);
 
+    printf("Data source length, which will be stretched to fit: %d\n", source_length);
+    printf("Largest point: %lf\n", max_point);
+    printf("Smallest point: %lf\n", min_point);
+    printf("\n");
+    printf("GRID PLOT:\n");
     for (int y = HEIGHT - 1; y >= 0; y--) {
         for (int x = 0; x < WIDTH; x++) {
             // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
@@ -462,12 +467,12 @@ void print_plot_linear_fit(const Power source_data[], const int source_length) {
 /// @brief Display a basic plot over the data points, cut to evenly scale to fit the terminal.
 /// @param source_data The data that is displayed
 /// @param source_length The amount of data points
-void print_plot_whole_cut_stretched(const Power source_data[], const int source_length) {
+void print_plot_whole_cut_scaled(const Power source_data[], const int source_length) {
     // make graph fit on screen, averaging out multiples of values if there are too many
-    const int cut_length = source_length % WIDTH;
-    const int values_per_point = new_max(1, source_length / WIDTH);
-    double max_point = 0; // in order to scale
-    double min_point = FLT_MAX; // idk what the right thing to use is
+    const int cut_length = ((source_length - 1) % WIDTH) + 1;
+    const int values_per_point = new_max(1, source_length / (int)WIDTH);
+    double max_point = source_data[0].GRID; // in order to scale
+    double min_point = source_data[0].GRID; // idk what the right thing to use is
     double points[cut_length]; // each element is one discrete x coordinate
     for (int x = 0; x < cut_length; x++) {
         double pointSum = 0.0;
@@ -483,9 +488,9 @@ void print_plot_whole_cut_stretched(const Power source_data[], const int source_
         }
         points[x] = point;
     }
-    assert(max_point > min_point);
+    assert(max_point >= min_point);
 
-    printf("Points (width): %d\n", cut_length);
+    printf("Points (width of graph): %d\n", cut_length);
     printf("Largest point: %lf\n", max_point);
     printf("Smallest point: %lf\n", min_point);
     printf("\n");
@@ -497,8 +502,10 @@ void print_plot_whole_cut_stretched(const Power source_data[], const int source_
             // every point may be multiple points
             const double raw_point = points[x];
             const double t = inv_lerp(min_point, max_point, raw_point);
-            const double show_height = (HEIGHT - 1) * t;
-            if (show_height >= y && show_height < (y + 1)) {
+            const double point_height = round(lerp(0, HEIGHT - 1, t));
+            const int display_lower = y;
+            const int display_upper = y + 1;
+            if (point_height >= display_lower && point_height < display_upper) {
                 printf("O"); // single point char
             } else {
                 printf(" "); // single space char
