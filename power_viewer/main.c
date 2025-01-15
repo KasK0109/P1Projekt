@@ -357,7 +357,7 @@ int userEditFile() {
             }
             printf("Fetched file. Appending...\n");
             FILE *fptr = fopen(strcat(path, filename), "a");
-            fprintf(fptr, "%lf %lf %lf", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE);
+            fprintf(fptr, "%lf %lf %lf\n", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE);
             fclose(fptr);
             printf("Wrote [%lf %lf %lf] to %s", newPoint.GRID, newPoint.SUSTAIN, newPoint.USAGE, filename);
         }
@@ -421,6 +421,19 @@ double read_field(const Power data, const int field) {
     }
 }
 
+void print_field(const int field) {
+    switch (field) {
+        case 0:
+            printf("GRID");
+        case 1:
+            printf("SUSTAIN");
+        case 2:
+            printf("USAGE");
+        default:
+            printf("UNKNOWN");
+    }
+}
+
 #define HEIGHT 8
 #define WIDTH 80
 
@@ -464,7 +477,8 @@ void print_plot_linear_fit(const Power source_data[], const int source_length, c
     printf("Largest point: %lf\n", max_point);
     printf("Smallest point: %lf\n", min_point);
     printf("\n");
-    printf("GRID PLOT:\n");
+    print_field(field);
+    printf(" PLOT:\n");
     for (int y = HEIGHT - 1; y >= 0; y--) {
         for (int x = 0; x < WIDTH; x++) {
             // XY coordinate in point plot (going left->right, up->down, where the y-axis is *up*)
@@ -515,7 +529,8 @@ void print_plot_whole_cut_scaled(const Power source_data[], const int source_len
     printf("Largest point: %lf\n", max_point);
     printf("Smallest point: %lf\n", min_point);
     printf("\n");
-    printf("GRID PLOT:\n");
+    print_field(field);
+    printf(" PLOT:\n");
     // print plot by going over each data point *per* print height
     for (int y = HEIGHT - 1; y >= 0; y--) {
         for (int x = 0; x < cut_length; x++) {
