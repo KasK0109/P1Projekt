@@ -21,6 +21,7 @@ void loop() {
     NotprintLoop(0);
   }
 }
+
 void NotprintLoop (int gridValue) {
   int count = 0;
   while (count < 5) {
