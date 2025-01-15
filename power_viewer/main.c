@@ -17,7 +17,7 @@
 
 #include <assert.h>
 #include <dirent.h>
-#include <inttypes.h>
+//#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -536,7 +536,7 @@ int userPlotData() {
     switch (answer) {
         case 'W':
         case 'w': {
-            print_plot_whole_cut_stretched(data, dataLength);
+            print_plot_whole_cut_scaled(data, dataLength);
         }
         break;
         case 'S':
