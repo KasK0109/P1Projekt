@@ -402,6 +402,25 @@ double inv_lerp(const double a, const double b, const double v) {
     return (v - a) / (b - a);
 }
 
+/**
+ * A way of dynamically selecting fields of data points.
+ * @param data the source data
+ * @param field the field index (0..3)
+ * @return the field (always a double for Power data)
+ */
+double read_field(const Power data, const int field) {
+    switch (field) {
+        case 0:
+            return data.GRID;
+        case 1:
+            return data.USAGE;
+        case 2:
+            return data.SUSTAIN;
+        default:
+            return -1;
+    }
+}
+
 #define HEIGHT 8
 #define WIDTH 80
 
@@ -411,7 +430,8 @@ double inv_lerp(const double a, const double b, const double v) {
 /// This means that it will literally skip certain points for source_length values above WIDTH*2.
 /// @param source_data The data that is displayed
 /// @param source_length The amount of data points
-void print_plot_linear_fit(const Power source_data[], const int source_length) {
+/// @param field the field to display
+void print_plot_linear_fit(const Power source_data[], const int source_length, const int field) {
     double draw_points[WIDTH];
     for (size_t x = 0; x < WIDTH; x++) {
         const double x_t = inv_lerp(0, WIDTH, x);
@@ -421,8 +441,8 @@ void print_plot_linear_fit(const Power source_data[], const int source_length) {
         const size_t upper = lower + 1; // round down: this works unless lower is the same as i_v
         const double i_t = inv_lerp(lower, upper, i_v);
         // see: only handles two points
-        const double a = source_data[lower].GRID;
-        const double b = source_data[upper].GRID;
+        const double a = read_field(source_data[lower], field);
+        const double b = read_field(source_data[upper], field);
         const double point = lerp(a, b, i_t);
         draw_points[x] = point;
     }
@@ -467,17 +487,18 @@ void print_plot_linear_fit(const Power source_data[], const int source_length) {
 /// @brief Display a basic plot over the data points, cut to evenly scale to fit the terminal.
 /// @param source_data The data that is displayed
 /// @param source_length The amount of data points
-void print_plot_whole_cut_scaled(const Power source_data[], const int source_length) {
+/// @param field the field to display
+void print_plot_whole_cut_scaled(const Power source_data[], const int source_length, const int field) {
     // make graph fit on screen, averaging out multiples of values if there are too many
     const int cut_length = ((source_length - 1) % WIDTH) + 1;
     const int values_per_point = new_max(1, source_length / (int)WIDTH);
-    double max_point = source_data[0].GRID; // in order to scale
-    double min_point = source_data[0].GRID; // idk what the right thing to use is
+    double max_point = read_field(source_data[0], field); // in order to scale
+    double min_point = read_field(source_data[0], field); // idk what the right thing to use is
     double points[cut_length]; // each element is one discrete x coordinate
     for (int x = 0; x < cut_length; x++) {
         double pointSum = 0.0;
         for (int i = 0; i < values_per_point; i++) {
-            pointSum += source_data[x + i].GRID;
+            pointSum += read_field(source_data[x + i], field);
         }
         const double point = pointSum / (double) values_per_point;
         if (point > max_point) {
@@ -527,21 +548,49 @@ int userPlotData() {
         return EXIT_FAILURE;
     }
 
-    // ask user where to put data point (new file or existing)
-    printf("Do you want to use whole scale only ('W'), or stretch to fit the data (`S`) for the dataset?\n> ");
-    char answer;
-    scanf(" %c", &answer); // note the empty space, without it the buffer is not flushed for some reason
+     // ask user where to put data point (new file or existing)
+    printf("Do you want to plot GRID ('G'), SUSTAIN (`S`), or USAGE (`U`) in the data?\n> ");
+    char field_answer;
+    scanf(" %c", &field_answer); // note the empty space, without it the buffer is not flushed for some reason
 
-    // both upper and lower case a/n are used
-    switch (answer) {
-        case 'W':
-        case 'w': {
-            print_plot_whole_cut_scaled(data, dataLength);
+    int field = 0;
+    // both upper and lower case are used
+    switch (field_answer) {
+        case 'G':
+        case 'g': {
+            field = 0;
         }
         break;
         case 'S':
         case 's': {
-            print_plot_linear_fit(data, dataLength);
+            field = 1;
+        }
+        break;
+        case 'U':
+        case 'u': {
+            field = 2;
+        }
+        break;
+        default:
+            printf("Unknown answer");
+        return EXIT_FAILURE;
+    }
+
+    // ask user where to put data point (new file or existing)
+    printf("Do you want to use whole scale only ('W'), or stretch to fit the data (`S`) for the dataset?\n> ");
+    char plot_answer;
+    scanf(" %c", &plot_answer); // note the empty space, without it the buffer is not flushed for some reason
+
+    // both upper and lower case are used
+    switch (plot_answer) {
+        case 'W':
+        case 'w': {
+            print_plot_whole_cut_scaled(data, dataLength, field);
+        }
+        break;
+        case 'S':
+        case 's': {
+            print_plot_linear_fit(data, dataLength, field);
         }
         break;
         default:
