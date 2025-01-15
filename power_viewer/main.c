@@ -153,16 +153,16 @@ int loadDirectoryData(FileIndex files[], int *fileCount) {
 
     int fileIndex = 0;
     while ((entry = readdir(directory)) != NULL) {
-        printf("Found entry '%s'...\n", entry->d_name);
+        // printf("Found entry '%s'...\n", entry->d_name);
         // Check if entry is a regular file and ends with ".csv"
         if (entry->d_type == DT_REG) {
             // Find the length of the filename
             const size_t len = strlen(entry->d_name);
-            printf("Found len (%d) ...\n", len);
+            // printf("Found len (%d) ...\n", len);
 
             // Check if the file has a ".csv" extension
             if (len > 4 && strcmp(entry->d_name + len - 4, ".csv") == 0) {
-                printf("File has csv extension!\n");
+                // printf("File has csv extension!\n");
                 FileIndex *file = &files[fileIndex];
                 file->number = fileIndex + 1;
                 strcpy(file->filename, entry->d_name);
