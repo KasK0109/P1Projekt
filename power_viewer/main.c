@@ -42,7 +42,7 @@ typedef struct {
 } Power;
 
 #define FILE_ARRAY_SIZE 256
-#define POWER_ARRAY_SIZE FILE_ARRAY_SIZE
+#define POWER_ARRAY_SIZE 2048
 #define PATH_CHAR_SIZE 1024
 
 int fetchContentFromFile(const char *filename, Power powerData[], int *powerDataIndex);
