@@ -1,2 +1,9 @@
 ﻿*.exe
 **/cmake-build-debug
+power_viewer/CMakeCache.txt
+power_viewer/CMakeFiles
+power_viewer/Testing/
+power_viewer/.cmake
+power_viewer/.ninja_*
+power_viewer/build.ninja
+power_viewer/cmake_install.cmake
