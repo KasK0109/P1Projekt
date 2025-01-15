@@ -425,12 +425,16 @@ void print_field(const int field) {
     switch (field) {
         case 0:
             printf("GRID");
+        break;
         case 1:
             printf("SUSTAIN");
+        break;
         case 2:
             printf("USAGE");
+        break;
         default:
             printf("UNKNOWN");
+        break;
     }
 }
 
